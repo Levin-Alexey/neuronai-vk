@@ -1,5 +1,4 @@
 const VK_API_URL = "https://api.vk.com/method/messages.send";
-const VK_EVENT_ANSWER_URL = "https://api.vk.com/method/messages.sendMessageEventAnswer";
 const VK_API_VERSION = "5.199";
 
 import aboutHandler from "./handlers/about.js";
@@ -102,14 +101,11 @@ async function handleButtonEvent(event, env) {
 
 	if (!handler) {
 		if (payload?.command === "back") {
-			await answerButtonEvent(event, env);
 			await sendWelcome({ peer_id: event.peer_id }, env);
 		}
 
 		return;
 	}
-
-	await answerButtonEvent(event, env);
 
 	if (payload.command === "manager") {
 		await setManagerWaiter(event, env);
@@ -152,19 +148,6 @@ function parsePayload(payload) {
 	} catch {
 		return null;
 	}
-}
-
-async function answerButtonEvent(event, env) {
-	const body = new URLSearchParams({
-		access_token: env.VK_GROUP_TOKEN,
-		v: VK_API_VERSION,
-		event_id: String(event.event_id),
-		user_id: String(event.user_id),
-		peer_id: String(event.peer_id),
-		event_data: JSON.stringify({ type: "show_snackbar", text: "Готово" }),
-	});
-
-	await fetch(VK_EVENT_ANSWER_URL, { method: "POST", body });
 }
 
 async function sendMessage(peerId, message, env, keyboard) {
