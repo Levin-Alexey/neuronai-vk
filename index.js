@@ -15,8 +15,8 @@ const buttonHandlers = {
 	manager: managerHandler,
 	reviews: reviewsHandler,
 };
-const managerMessageWaiters = new Set();
 const MANAGER_PEER_ID = "-239062581";
+const MANAGER_WAITING_TTL = 1800;
 
 export default {
 	async fetch(request, env, ctx) {
@@ -41,9 +41,9 @@ export default {
 
 		if (update.type === "message_new" && update.object?.message?.text) {
 			const message = update.object.message;
-			const waiterId = getWaiterId(message);
+			ctx.waitUntil(registerUser(message.from_id, env));
 
-			if (managerMessageWaiters.delete(waiterId)) {
+			if (await consumeManagerWaiter(message, env)) {
 				ctx.waitUntil(forwardManagerMessage(message.text, env));
 			} else {
 				ctx.waitUntil(sendWelcome(message, env));
@@ -51,6 +51,7 @@ export default {
 		}
 
 		if (update.type === "message_event") {
+			ctx.waitUntil(registerUser(update.object.user_id, env));
 			ctx.waitUntil(handleButtonEvent(update.object, env));
 		}
 
@@ -111,7 +112,7 @@ async function handleButtonEvent(event, env) {
 	await answerButtonEvent(event, env);
 
 	if (payload.command === "manager") {
-		managerMessageWaiters.add(getWaiterId(event));
+		await setManagerWaiter(event, env);
 	}
 
 	const keyboard = payload.command === "about" ? createAboutKeyboard() : undefined;
@@ -119,7 +120,26 @@ async function handleButtonEvent(event, env) {
 }
 
 function getWaiterId(event) {
-	return `${event.peer_id}:${event.user_id}`;
+	const userId = event.user_id ?? event.from_id;
+	return `manager_waiting:${event.peer_id}:${userId}`;
+}
+
+async function setManagerWaiter(event, env) {
+	await env.KV.put(getWaiterId(event), "1", {
+		expirationTtl: MANAGER_WAITING_TTL,
+	});
+}
+
+async function consumeManagerWaiter(event, env) {
+	const key = getWaiterId(event);
+	const isWaiting = await env.KV.get(key);
+
+	if (isWaiting !== null) {
+		await env.KV.delete(key);
+		return true;
+	}
+
+	return false;
 }
 
 function parsePayload(payload) {
@@ -169,6 +189,32 @@ async function sendMessage(peerId, message, env, keyboard) {
 
 async function forwardManagerMessage(message, env) {
 	await sendMessage(MANAGER_PEER_ID, message, env);
+}
+
+async function registerUser(vkUserId, env) {
+	if (!vkUserId) {
+		return;
+	}
+
+	const now = new Date().toISOString();
+
+	try {
+		await env.DB.prepare(`
+			CREATE TABLE IF NOT EXISTS bot_users (
+				vk_user_id INTEGER PRIMARY KEY,
+				first_launch_at TEXT NOT NULL,
+				last_activity_at TEXT NOT NULL
+			)
+		`).run();
+
+		await env.DB.prepare(`
+			INSERT INTO bot_users (vk_user_id, first_launch_at, last_activity_at)
+			VALUES (?, ?, ?)
+			ON CONFLICT(vk_user_id) DO UPDATE SET last_activity_at = excluded.last_activity_at
+		`).bind(vkUserId, now, now).run();
+	} catch (error) {
+		console.error("D1 user registration failed", error);
+	}
 }
 
 function createMainKeyboard() {

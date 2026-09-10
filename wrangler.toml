@@ -2,4 +2,13 @@ name = "neuronai-vk"
 main = "index.js"
 compatibility_date = "2026-02-10"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "neuronai_vk"
+database_id = "b4206d86-2b89-46e8-9ab5-fb7e4956c353"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "fe0dd0b3b28f46eba6bf873d59d979e9"
+
 
