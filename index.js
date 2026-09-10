@@ -6,13 +6,17 @@ import aboutHandler from "./handlers/about.js";
 import servicesHandler from "./handlers/services.js";
 import portfolioHandler from "./handlers/portfolio.js";
 import managerHandler from "./handlers/manager.js";
+import reviewsHandler from "./handlers/reviews.js";
 
 const buttonHandlers = {
 	about: aboutHandler,
 	services: servicesHandler,
 	portfolio: portfolioHandler,
 	manager: managerHandler,
+	reviews: reviewsHandler,
 };
+const managerMessageWaiters = new Set();
+const MANAGER_PEER_ID = "-239062581";
 
 export default {
 	async fetch(request, env, ctx) {
@@ -36,7 +40,14 @@ export default {
 		}
 
 		if (update.type === "message_new" && update.object?.message?.text) {
-			ctx.waitUntil(sendWelcome(update.object.message, env));
+			const message = update.object.message;
+			const waiterId = getWaiterId(message);
+
+			if (managerMessageWaiters.delete(waiterId)) {
+				ctx.waitUntil(forwardManagerMessage(message.text, env));
+			} else {
+				ctx.waitUntil(sendWelcome(message, env));
+			}
 		}
 
 		if (update.type === "message_event") {
@@ -48,12 +59,7 @@ export default {
 };
 
 async function sendWelcome(message, env) {
-	const body = new URLSearchParams({
-		access_token: env.VK_GROUP_TOKEN,
-		v: VK_API_VERSION,
-		peer_id: String(message.peer_id),
-		random_id: String(Date.now()),
-		message: `⚡️ Neuron_AI | Ваш AI-партнер в цифровой трансформации
+	await sendMessage(message.peer_id, `⚡️ Neuron_AI | Ваш AI-партнер в цифровой трансформации
 
 Мы превращаем Искусственный Интеллект в реальные бизнес-результаты
 
@@ -86,26 +92,7 @@ async function sendWelcome(message, env) {
 
 12+ лет опыта в IT • 50+ AI проектов • Полный цикл разработки
 
-👇 Начнем создавать AI решения?`,
-		keyboard: JSON.stringify({
-			inline: true,
-			buttons: [
-				[{ action: { type: "callback", label: "🏢 О компании", payload: JSON.stringify({ command: "about" }) }, color: "primary" }],
-				[{ action: { type: "callback", label: "🛠️ Наши услуги", payload: JSON.stringify({ command: "services" }) }, color: "primary" }],
-				[{ action: { type: "callback", label: "📁 Портфолио", payload: JSON.stringify({ command: "portfolio" }) }, color: "secondary" }],
-				[{ action: { type: "callback", label: "💬 Связаться с менеджером", payload: JSON.stringify({ command: "manager" }) }, color: "positive" }],
-			],
-		}),
-	});
-
-	const response = await fetch(VK_API_URL, {
-		method: "POST",
-		body,
-	});
-
-	if (!response.ok) {
-		console.error("VK messages.send failed", await response.text());
-	}
+👇 Начнем создавать AI решения?`, env, createMainKeyboard());
 }
 
 async function handleButtonEvent(event, env) {
@@ -113,11 +100,26 @@ async function handleButtonEvent(event, env) {
 	const handler = buttonHandlers[payload?.command];
 
 	if (!handler) {
+		if (payload?.command === "back") {
+			await answerButtonEvent(event, env);
+			await sendWelcome({ peer_id: event.peer_id }, env);
+		}
+
 		return;
 	}
 
 	await answerButtonEvent(event, env);
-	await sendMessage(event.peer_id, handler(), env);
+
+	if (payload.command === "manager") {
+		managerMessageWaiters.add(getWaiterId(event));
+	}
+
+	const keyboard = payload.command === "about" ? createAboutKeyboard() : undefined;
+	await sendMessage(event.peer_id, handler(), env, keyboard);
+}
+
+function getWaiterId(event) {
+	return `${event.peer_id}:${event.user_id}`;
 }
 
 function parsePayload(payload) {
@@ -145,7 +147,7 @@ async function answerButtonEvent(event, env) {
 	await fetch(VK_EVENT_ANSWER_URL, { method: "POST", body });
 }
 
-async function sendMessage(peerId, message, env) {
+async function sendMessage(peerId, message, env, keyboard) {
 	const body = new URLSearchParams({
 		access_token: env.VK_GROUP_TOKEN,
 		v: VK_API_VERSION,
@@ -154,9 +156,40 @@ async function sendMessage(peerId, message, env) {
 		message,
 	});
 
+	if (keyboard) {
+		body.set("keyboard", JSON.stringify(keyboard));
+	}
+
 	const response = await fetch(VK_API_URL, { method: "POST", body });
 
 	if (!response.ok) {
 		console.error("VK messages.send failed", await response.text());
 	}
+}
+
+async function forwardManagerMessage(message, env) {
+	await sendMessage(MANAGER_PEER_ID, message, env);
+}
+
+function createMainKeyboard() {
+	return {
+		inline: true,
+		buttons: [
+			[{ action: { type: "callback", label: "🏢 О компании", payload: JSON.stringify({ command: "about" }) }, color: "primary" }],
+			[{ action: { type: "callback", label: "🛠️ Наши услуги", payload: JSON.stringify({ command: "services" }) }, color: "primary" }],
+			[{ action: { type: "callback", label: "📁 Портфолио", payload: JSON.stringify({ command: "portfolio" }) }, color: "primary" }],
+			[{ action: { type: "callback", label: "💬 Связаться с менеджером", payload: JSON.stringify({ command: "manager" }) }, color: "positive" }],
+		],
+	};
+}
+
+function createAboutKeyboard() {
+	return {
+		inline: true,
+		buttons: [
+			[{ action: { type: "callback", label: "❤️ Отзывы о нас", payload: JSON.stringify({ command: "reviews" }) }, color: "primary" }],
+			[{ action: { type: "callback", label: "📞 Связаться с нами", payload: JSON.stringify({ command: "manager" }) }, color: "positive" }],
+			[{ action: { type: "callback", label: "↩️ Назад", payload: JSON.stringify({ command: "back" }) }, color: "secondary" }],
+		],
+	};
 }
