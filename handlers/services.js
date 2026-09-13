@@ -29,25 +29,15 @@ export default function servicesHandler() {
 		keyboard: {
 			inline: true,
 			buttons: [
-				[
-					{ action: { type: "callback", label: "🤖 Чат-боты", payload: JSON.stringify({ command: "service_chatbots" }) }, color: "primary" },
-					{ action: { type: "callback", label: "📞 Голосовые боты", payload: JSON.stringify({ command: "service_voicebots" }) }, color: "primary" },
-				],
-				[
-					{ action: { type: "callback", label: "🎭 3D аватары", payload: JSON.stringify({ command: "service_avatars" }) }, color: "primary" },
-					{ action: { type: "callback", label: "🎨 AI контент", payload: JSON.stringify({ command: "service_content" }) }, color: "primary" },
-				],
-				[
-					{ action: { type: "callback", label: "⚙️ Автоматизация", payload: JSON.stringify({ command: "service_automation" }) }, color: "primary" },
-					{ action: { type: "callback", label: "🔗 Интеграция AI", payload: JSON.stringify({ command: "service_integration" }) }, color: "primary" },
-				],
-				[
-					{ action: { type: "callback", label: "🧠 Custom разработка", payload: JSON.stringify({ command: "service_custom" }) }, color: "primary" },
-					{ action: { type: "callback", label: "📋 Консультация", payload: JSON.stringify({ command: "service_audit" }) }, color: "primary" },
-				],
-				[
-					{ action: { type: "callback", label: "↩️ Назад", payload: JSON.stringify({ command: "back" }) }, color: "secondary" },
-				],
+				[{ action: { type: "callback", label: "🤖 Чат-боты", payload: JSON.stringify({ command: "service_chatbots" }) }, color: "primary" }],
+				[{ action: { type: "callback", label: "📞 Голосовые боты", payload: JSON.stringify({ command: "service_voicebots" }) }, color: "primary" }],
+				[{ action: { type: "callback", label: "🎭 3D аватары с ИИ", payload: JSON.stringify({ command: "service_avatars" }) }, color: "primary" }],
+				// [{ action: { type: "callback", label: "🎨 AI генерация контента", payload: JSON.stringify({ command: "service_content" }) }, color: "primary" }],
+				[{ action: { type: "callback", label: "⚙️ Автоматизация процессов", payload: JSON.stringify({ command: "service_automation" }) }, color: "primary" }],
+				[{ action: { type: "callback", label: "🔗 Интеграция AI в процессы", payload: JSON.stringify({ command: "service_integration" }) }, color: "primary" }],
+				// [{ action: { type: "callback", label: "🧠 Индивидуальная разработка", payload: JSON.stringify({ command: "service_custom" }) }, color: "primary" }],
+				// [{ action: { type: "callback", label: "📋 Консультация и аудит", payload: JSON.stringify({ command: "service_audit" }) }, color: "primary" }],
+				[{ action: { type: "callback", label: "↩️ Назад", payload: JSON.stringify({ command: "back" }) }, color: "secondary" }],
 			],
 		},
 	};
