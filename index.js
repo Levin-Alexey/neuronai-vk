@@ -6,6 +6,14 @@ import servicesHandler from "./handlers/services.js";
 import portfolioHandler from "./handlers/portfolio.js";
 import managerHandler from "./handlers/manager.js";
 import reviewsHandler from "./handlers/reviews.js";
+import serviceChatbotsHandler from "./handlers/service_chatbots.js";
+import serviceVoicebotsHandler from "./handlers/service_voicebots.js";
+import serviceAvatarsHandler from "./handlers/service_avatars.js";
+import serviceContentHandler from "./handlers/service_content.js";
+import serviceAutomationHandler from "./handlers/service_automation.js";
+import serviceIntegrationHandler from "./handlers/service_integration.js";
+import serviceCustomHandler from "./handlers/service_custom.js";
+import serviceAuditHandler from "./handlers/service_audit.js";
 
 const buttonHandlers = {
 	about: aboutHandler,
@@ -13,6 +21,14 @@ const buttonHandlers = {
 	portfolio: portfolioHandler,
 	manager: managerHandler,
 	reviews: reviewsHandler,
+	service_chatbots: serviceChatbotsHandler,
+	service_voicebots: serviceVoicebotsHandler,
+	service_avatars: serviceAvatarsHandler,
+	service_content: serviceContentHandler,
+	service_automation: serviceAutomationHandler,
+	service_integration: serviceIntegrationHandler,
+	service_custom: serviceCustomHandler,
+	service_audit: serviceAuditHandler,
 };
 const MANAGER_PEER_ID = "-239062581";
 const MANAGER_WAITING_TTL = 1800;
@@ -111,8 +127,15 @@ async function handleButtonEvent(event, env) {
 		await setManagerWaiter(event, env);
 	}
 
-	const keyboard = payload.command === "about" ? createAboutKeyboard() : undefined;
-	await sendMessage(event.peer_id, handler(), env, keyboard);
+	const result = handler();
+	const message = typeof result === "object" ? result?.message ?? result?.text : result;
+	let keyboard = typeof result === "object" ? result?.keyboard : undefined;
+
+	if (!keyboard && payload.command === "about") {
+		keyboard = createAboutKeyboard();
+	}
+
+	await sendMessage(event.peer_id, message, env, keyboard);
 }
 
 function getWaiterId(event) {
