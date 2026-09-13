@@ -1,4 +1,5 @@
 const VK_API_URL = "https://api.vk.com/method/messages.send";
+const VK_EVENT_ANSWER_URL = "https://api.vk.com/method/messages.sendMessageEventAnswer";
 const VK_API_VERSION = "5.199";
 
 import aboutHandler from "./handlers/about.js";
@@ -112,6 +113,8 @@ async function sendWelcome(message, env) {
 }
 
 async function handleButtonEvent(event, env) {
+	await answerMessageEvent(event, env);
+
 	const payload = parsePayload(event.payload);
 	const handler = buttonHandlers[payload?.command];
 
@@ -136,6 +139,26 @@ async function handleButtonEvent(event, env) {
 	}
 
 	await sendMessage(event.peer_id, message, env, keyboard);
+}
+
+async function answerMessageEvent(event, env) {
+	if (!event?.event_id || !event?.user_id || !event?.peer_id) {
+		return;
+	}
+
+	const body = new URLSearchParams({
+		access_token: env.VK_GROUP_TOKEN,
+		v: VK_API_VERSION,
+		event_id: String(event.event_id),
+		user_id: String(event.user_id),
+		peer_id: String(event.peer_id),
+	});
+
+	try {
+		await fetch(VK_EVENT_ANSWER_URL, { method: "POST", body });
+	} catch (error) {
+		console.error("VK sendMessageEventAnswer failed", error);
+	}
 }
 
 function getWaiterId(event) {
